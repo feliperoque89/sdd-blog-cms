@@ -1,0 +1,39 @@
+# Mesma imagem do backend (docker/backend.Dockerfile), comando diferente —
+# consome a fila de geração de rascunhos via IA (SPEC-003 / R7,
+# `app.workers.ai_worker.run_worker`). Sem Service: não expõe porta HTTP.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  namespace: sdd-blog-cms
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      containers:
+        - name: worker
+          image: sdd-blog-cms-backend:local
+          imagePullPolicy: IfNotPresent
+          command: ["python", "-m", "app.workers.ai_worker"]
+          envFrom:
+            - configMapRef:
+                name: backend-config
+            - secretRef:
+                name: backend-secrets
+          # Sem probes HTTP: `run_worker` é um loop de consumo (BLPOP-style
+          # polling via `JobQueue.dequeue`), não um servidor. Se o processo
+          # morrer, o restartPolicy padrão do Deployment (Always) já cobre
+          # a recuperação — não há endpoint natural para uma liveness probe.
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

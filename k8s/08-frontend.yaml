@@ -1,0 +1,60 @@
+# TEMPLATE — `frontend/` ainda não existe neste repositório (ver
+# docker/frontend.Dockerfile). Mantido aqui para que `kubectl apply -f k8s/`
+# descreva a arquitetura-alvo completa; a imagem só existirá depois que o
+# Next.js App Router for scaffoldado e a imagem construída.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: sdd-blog-cms
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: sdd-blog-cms-frontend:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          env:
+            # DNS interno do cluster (Service `backend`, ver 06-backend.yaml).
+            - name: NEXT_PUBLIC_API_URL
+              value: "http://backend:8000"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: sdd-blog-cms
+spec:
+  selector:
+    app: frontend
+  ports:
+    - port: 3000
+      targetPort: 3000

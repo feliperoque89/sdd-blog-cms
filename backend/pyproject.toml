@@ -1,0 +1,90 @@
+[project]
+name = "sdd-blog-cms-backend"
+version = "0.1.0"
+description = "Backend do SDD Blog CMS (FastAPI + SQLAlchemy async)."
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "sqlalchemy[asyncio]>=2.0",
+    "aiosqlite>=0.20",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "email-validator>=2.1",
+    "python-jose[cryptography]>=3.3",
+    "passlib[bcrypt]>=1.7",
+    # Pinned: passlib 1.7.4's bcrypt backend detection breaks on bcrypt>=4.1
+    # (module no longer exposes `__about__`), see
+    # https://github.com/pyca/bcrypt/issues/684.
+    "bcrypt==4.0.1",
+    "redis>=5.0",
+    # Usado por `app.services.ai_client.HttpAiClient` (SPEC-003) para chamar
+    # a API da LLM em produção; também usado pela suíte de testes (client
+    # HTTP assíncrono contra a app FastAPI via ASGI transport).
+    "httpx>=0.27",
+    # Migrations (schema real em MySQL — testes unitários continuam usando
+    # SQLite in-memory sem alembic, ver backend/tests/conftest.py).
+    "alembic>=1.13",
+    # Driver MySQL assíncrono usado em produção (DATABASE_URL=mysql+asyncmy://...,
+    # ver specs/ARCHITECTURE.md). Não usado pela suíte de testes unitários.
+    "asyncmy>=0.2.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=5.0",
+    "factory_boy>=3.3",
+    "faker>=25.0",
+    "ruff>=0.5",
+    "black>=24.4",
+    "mypy>=1.10",
+]
+
+[tool.pytest.ini_options]
+# asyncio_mode = auto conforme specs/TESTING.md — testes/fixtures `async def`
+# não precisam do decorator @pytest.mark.asyncio explícito.
+asyncio_mode = "auto"
+# Garante que `app` (quando existir) e `tests` sejam importáveis como
+# pacotes de topo a partir da raiz de backend/, sem hacks de sys.path.
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# B008 é ignorado globalmente porque o padrão `Depends(...)` do FastAPI
+# como valor default de parâmetro é idiomático e onipresente no projeto
+# (routers em app/api/*.py), não um bug.
+ignore = ["B008"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "tests"]
+
+[tool.coverage.run]
+# SQLAlchemy 2.x async usa `greenlet` internamente para fazer a ponte
+# sync/async (mesmo com um driver nativamente async como `aiosqlite`). Sem
+# declarar esse tracer de concorrência, o coverage.py perde a rastreabilidade
+# de linhas executadas "depois" de um `await db.execute(...)` (ex.: blocos
+# `except` de código que chamou uma query) — resultando em falsos negativos
+# de cobertura.
+concurrency = ["greenlet", "thread"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+# `factory.Factory` (factory_boy) não tem stubs completos de tipos.
+module = ["factory.*", "jose.*", "passlib.*"]
+ignore_missing_imports = true

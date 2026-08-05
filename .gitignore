@@ -1,0 +1,4 @@
+# Segredos reais do cluster — nunca commitar. Copie k8s/secret.example.yaml
+# para k8s/secret.yaml e preencha localmente, ou gere via `kubectl create
+# secret` / um gerenciador de segredos (ver k8s/secret.example.yaml).
+k8s/secret.yaml

@@ -1,0 +1,33 @@
+# Variáveis de ambiente não sensíveis do backend/worker (mesmas lidas por
+# `app.core.config.Settings`). Credenciais/segredos ficam em `secret.yaml`
+# (ver k8s/02-secret.example.yaml) — nunca aqui.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: sdd-blog-cms
+data:
+  ENVIRONMENT: "production"
+  JWT_ALGORITHM: "HS256"
+  JWT_EXPIRES_MIN: "60"
+  JWT_REFRESH_EXPIRES_DAYS: "7"
+  RATE_LIMIT_LOGIN_MAX_ATTEMPTS: "5"
+  RATE_LIMIT_LOGIN_WINDOW_SECONDS: "60"
+  COOKIE_SECURE: "true"
+  # SPEC-001: navegador só envia cookies httpOnly em chamadas cross-origin se
+  # o backend responder com Access-Control-Allow-Origin para essa origem
+  # exata (allow_credentials=True proíbe usar "*"). Atrás do Ingress
+  # (09-ingress.yaml) frontend/backend ficam sob o mesmo host, então isso é
+  # defensivo em produção — mas é obrigatório para rodar frontend/backend
+  # separados em desenvolvimento local (ajuste para a origem real do seu
+  # `npm run dev`, ex.: '["http://localhost:3000"]').
+  CORS_ALLOWED_ORIGINS: '["http://blog.local"]'
+  # DNS interno do cluster (Service `redis`, ver 04-redis.yaml) — sem
+  # autenticação configurada, por isso não é segredo.
+  REDIS_URL: "redis://redis:6379/0"
+  LLM_MODEL: "claude-sonnet-4-6"
+  LLM_API_BASE_URL: "https://api.anthropic.com/v1/messages"
+  LLM_TIMEOUT_SECONDS: "30"
+  LLM_MAX_OUTPUT_TOKENS: "4096"
+  RATE_LIMIT_AI_MAX_ATTEMPTS: "10"
+  RATE_LIMIT_AI_WINDOW_SECONDS: "3600"
