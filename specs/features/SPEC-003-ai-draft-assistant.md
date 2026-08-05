@@ -1,7 +1,7 @@
 # SPEC-003 — Assistente de IA para Redação de Posts
 
 ## Status
-Aprovada
+Implementado
 
 ## Objetivo
 Permitir que o Editor forneça um tópico/instrução e receba um rascunho de

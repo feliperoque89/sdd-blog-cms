@@ -9,9 +9,24 @@ import {
   type PostStatus,
 } from "@/lib/posts-client";
 
+/**
+ * Valores usados para pré-preencher o formulário em modo `create` (ex.:
+ * rascunho vindo do assistente de IA — SPEC-003). Ignorado em modo `edit`,
+ * onde `post` já é a fonte de verdade.
+ */
+export interface PostEditorInitialValues {
+  title?: string;
+  content_markdown?: string;
+  category_id?: string;
+  tags?: string[];
+  cover_image_url?: string | null;
+  status?: PostStatus;
+}
+
 export interface PostEditorProps {
   mode: "create" | "edit";
   post?: AdminPost;
+  initialValues?: PostEditorInitialValues;
   onSuccess?: (post: AdminPost) => void;
   onCancel?: () => void;
 }
@@ -23,13 +38,17 @@ function parseTags(tagsInput: string): string[] {
     .filter((tag) => tag.length > 0);
 }
 
-export default function PostEditor({ mode, post, onSuccess, onCancel }: PostEditorProps) {
-  const [title, setTitle] = useState(post?.title ?? "");
-  const [content, setContent] = useState(post?.content_markdown ?? "");
-  const [category, setCategory] = useState(post?.category_id ?? "");
-  const [tagsInput, setTagsInput] = useState(post?.tags.join(", ") ?? "");
-  const [coverImageUrl, setCoverImageUrl] = useState(post?.cover_image_url ?? "");
-  const [status, setStatus] = useState<PostStatus>(post?.status ?? "draft");
+export default function PostEditor({ mode, post, initialValues, onSuccess, onCancel }: PostEditorProps) {
+  const [title, setTitle] = useState(post?.title ?? initialValues?.title ?? "");
+  const [content, setContent] = useState(post?.content_markdown ?? initialValues?.content_markdown ?? "");
+  const [category, setCategory] = useState(post?.category_id ?? initialValues?.category_id ?? "");
+  const [tagsInput, setTagsInput] = useState(
+    post?.tags.join(", ") ?? initialValues?.tags?.join(", ") ?? ""
+  );
+  const [coverImageUrl, setCoverImageUrl] = useState(
+    post?.cover_image_url ?? initialValues?.cover_image_url ?? ""
+  );
+  const [status, setStatus] = useState<PostStatus>(post?.status ?? initialValues?.status ?? "draft");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
