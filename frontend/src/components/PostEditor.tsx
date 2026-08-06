@@ -8,7 +8,7 @@ import {
   type PostInput,
   type PostStatus,
 } from "@/lib/posts-client";
-import { listCategories, type Category } from "@/lib/categories-client";
+import { listCategories, createCategory, type Category } from "@/lib/categories-client";
 
 /**
  * Valores usados para pré-preencher o formulário em modo `create` (ex.:
@@ -53,6 +53,10 @@ export default function PostEditor({ mode, post, initialValues, onSuccess, onCan
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [categoryError, setCategoryError] = useState<string | null>(null);
 
   // RF01 exige uma categoria, mas SPEC-002 não define endpoint de gestão de
   // categorias — este seletor só lista as já cadastradas. Sem ele, o editor
@@ -101,6 +105,39 @@ export default function PostEditor({ mode, post, initialValues, onSuccess, onCan
       setError(err instanceof Error ? err.message : "Não foi possível salvar o post.");
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  // RF09 — cria a categoria direto na tela, sem exigir uma tela
+  // administrativa separada. O backend é idempotente por nome
+  // (case-insensitive): se a categoria já existir, devolve a existente em
+  // vez de duplicar.
+  async function handleCreateCategory() {
+    const trimmedName = newCategoryName.trim();
+    if (trimmedName === "") {
+      setCategoryError("Informe um nome para a categoria.");
+      return;
+    }
+
+    setCategoryError(null);
+    setIsCreatingCategory(true);
+
+    try {
+      const created = await createCategory(trimmedName);
+      setCategories((current) =>
+        current.some((c) => c.id === created.id)
+          ? current
+          : [...current, created].sort((a, b) => a.name.localeCompare(b.name))
+      );
+      setCategory(created.id);
+      setNewCategoryName("");
+      setIsAddingCategory(false);
+    } catch (err) {
+      setCategoryError(
+        err instanceof Error ? err.message : "Não foi possível criar a categoria."
+      );
+    } finally {
+      setIsCreatingCategory(false);
     }
   }
 
@@ -155,6 +192,61 @@ export default function PostEditor({ mode, post, initialValues, onSuccess, onCan
             </option>
           ))}
         </select>
+
+        {isAddingCategory ? (
+          <div className="flex items-center gap-2 pt-1">
+            <label htmlFor="post-new-category-name" className="sr-only">
+              Nome da nova categoria
+            </label>
+            <input
+              id="post-new-category-name"
+              name="new_category_name"
+              type="text"
+              placeholder="Nome da nova categoria"
+              value={newCategoryName}
+              onChange={(event) => setNewCategoryName(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void handleCreateCategory();
+                }
+              }}
+              className="rounded border border-gray-300 px-3 py-2 text-sm"
+            />
+            <button
+              type="button"
+              onClick={() => void handleCreateCategory()}
+              disabled={isCreatingCategory}
+              className="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+            >
+              Adicionar
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsAddingCategory(false);
+                setNewCategoryName("");
+                setCategoryError(null);
+              }}
+              className="rounded border border-gray-300 px-3 py-2 text-sm text-gray-700"
+            >
+              Cancelar
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setIsAddingCategory(true)}
+            className="self-start pt-1 text-sm font-medium text-blue-700 hover:underline"
+          >
+            + Nova categoria
+          </button>
+        )}
+        {categoryError && (
+          <p role="alert" className="text-sm text-red-600">
+            {categoryError}
+          </p>
+        )}
       </div>
 
       <div className="flex flex-col gap-1">

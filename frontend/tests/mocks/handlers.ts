@@ -46,4 +46,9 @@ export const handlers = [
   http.get(`${API_URL}/api/admin/categories`, () => {
     return HttpResponse.json(mockCategories, { status: 200 });
   }),
+
+  http.post(`${API_URL}/api/admin/categories`, async ({ request }) => {
+    const body = (await request.json()) as { name: string };
+    return HttpResponse.json({ id: body.name, name: body.name }, { status: 201 });
+  }),
 ];

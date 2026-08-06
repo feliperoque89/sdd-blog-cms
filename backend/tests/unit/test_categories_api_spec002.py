@@ -40,3 +40,49 @@ async def test_admin_role_can_list_categories_spec002(admin_client: AsyncClient)
     response = await admin_client.get("/api/admin/categories")
 
     assert response.status_code == 200
+
+
+async def test_post_categories_creates_new_category_spec002(
+    editor_client: AsyncClient,
+) -> None:
+    response = await editor_client.post("/api/admin/categories", json={"name": "Tecnologia"})
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["name"] == "Tecnologia"
+    assert body["id"]
+
+
+async def test_post_categories_returns_existing_category_case_insensitively_spec002(
+    editor_client: AsyncClient,
+) -> None:
+    created = await editor_client.post("/api/admin/categories", json={"name": "Tecnologia"})
+    created_id = created.json()["id"]
+
+    response = await editor_client.post("/api/admin/categories", json={"name": "  tecnologia  "})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["id"] == created_id
+    assert body["name"] == "Tecnologia"
+
+    listing = await editor_client.get("/api/admin/categories")
+    assert len([c for c in listing.json() if c["id"] == created_id]) == 1
+
+
+async def test_post_categories_requires_non_empty_name_spec002(
+    editor_client: AsyncClient,
+) -> None:
+    missing = await editor_client.post("/api/admin/categories", json={})
+    assert missing.status_code == 422
+
+    blank = await editor_client.post("/api/admin/categories", json={"name": "   "})
+    assert blank.status_code == 422
+
+
+async def test_post_categories_without_authentication_returns_401_spec002(
+    client: AsyncClient,
+) -> None:
+    response = await client.post("/api/admin/categories", json={"name": "Tecnologia"})
+
+    assert response.status_code == 401

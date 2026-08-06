@@ -140,6 +140,88 @@ describe("PostEditor (SPEC-002)", () => {
     });
   });
 
+  describe("criar categoria inline (RF09)", () => {
+    it("dado um nome de categoria novo, quando adiciona, então chama POST /api/admin/categories e seleciona a categoria criada", async () => {
+      let capturedBody: Record<string, unknown> | null = null;
+      server.use(
+        http.post(`${API_URL}/api/admin/categories`, async ({ request }) => {
+          capturedBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json({ id: "nova-categoria-id", name: "Viagem" }, { status: 201 });
+        })
+      );
+
+      const user = userEvent.setup();
+      render(<PostEditor mode="create" />);
+
+      await screen.findByRole("option", { name: /tecnologia/i });
+      await user.click(screen.getByRole("button", { name: /nova categoria/i }));
+      await user.type(screen.getByLabelText(/nome da nova categoria/i), "Viagem");
+      await user.click(screen.getByRole("button", { name: /^adicionar$/i }));
+
+      await waitFor(() => expect(capturedBody).toEqual({ name: "Viagem" }));
+      expect(await screen.findByRole("option", { name: "Viagem" })).toBeInTheDocument();
+      expect(screen.getByLabelText(/categoria/i)).toHaveValue("nova-categoria-id");
+      // O formulário de "nova categoria" fecha depois de adicionar com sucesso.
+      expect(screen.queryByLabelText(/nome da nova categoria/i)).not.toBeInTheDocument();
+    });
+
+    it("dado o campo de nova categoria vazio, quando adiciona, então mostra erro e não chama a API", async () => {
+      const createSpy = vi.fn();
+      server.use(
+        http.post(`${API_URL}/api/admin/categories`, () => {
+          createSpy();
+          return HttpResponse.json({ id: "x", name: "x" }, { status: 201 });
+        })
+      );
+
+      const user = userEvent.setup();
+      render(<PostEditor mode="create" />);
+
+      await user.click(screen.getByRole("button", { name: /nova categoria/i }));
+      await user.click(screen.getByRole("button", { name: /^adicionar$/i }));
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(/informe um nome/i);
+      expect(createSpy).not.toHaveBeenCalled();
+    });
+
+    it("dado um erro da API ao criar categoria, então mostra a mensagem via role=alert", async () => {
+      server.use(
+        http.post(`${API_URL}/api/admin/categories`, () =>
+          HttpResponse.json({ detail: "name não pode ser vazio." }, { status: 422 })
+        )
+      );
+
+      const user = userEvent.setup();
+      render(<PostEditor mode="create" />);
+
+      await user.click(screen.getByRole("button", { name: /nova categoria/i }));
+      await user.type(screen.getByLabelText(/nome da nova categoria/i), "Viagem");
+      await user.click(screen.getByRole("button", { name: /^adicionar$/i }));
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(/name não pode ser vazio/i);
+    });
+
+    it("dado o formulário de nova categoria aberto, quando cancela, então esconde o campo sem chamar a API", async () => {
+      const createSpy = vi.fn();
+      server.use(
+        http.post(`${API_URL}/api/admin/categories`, () => {
+          createSpy();
+          return HttpResponse.json({ id: "x", name: "x" }, { status: 201 });
+        })
+      );
+
+      const user = userEvent.setup();
+      render(<PostEditor mode="create" />);
+
+      await user.click(screen.getByRole("button", { name: /nova categoria/i }));
+      await user.type(screen.getByLabelText(/nome da nova categoria/i), "Viagem");
+      await user.click(screen.getByRole("button", { name: /cancelar/i }));
+
+      expect(screen.queryByLabelText(/nome da nova categoria/i)).not.toBeInTheDocument();
+      expect(createSpy).not.toHaveBeenCalled();
+    });
+  });
+
   describe("modo edit (RF03)", () => {
     it("dado um post via props, então pré-preenche todos os campos, inclusive a categoria selecionada", async () => {
       const post = buildAdminPost({

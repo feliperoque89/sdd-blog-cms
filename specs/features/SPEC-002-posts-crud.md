@@ -23,6 +23,18 @@ Depende de SPEC-001 (autenticação) para todas as rotas administrativas.
 - RF06: Endpoint público lista apenas posts com status `published` e
   `deleted_at IS NULL`, ordenados por data de publicação decrescente.
 - RF07: Endpoint público retorna um post por slug.
+- RF08: Endpoint administrativo lista as categorias existentes, ordenadas
+  por nome — usado pelo seletor de categoria do `PostEditor` (RF01), para
+  que o editor escolha uma categoria válida em vez de digitar um
+  `category_id` de cabeça (o que antes fazia `POST /api/admin/posts` falhar
+  com violação de chave estrangeira sempre que o valor não correspondesse a
+  uma categoria real).
+- RF09: Endpoint administrativo cria uma categoria a partir de um `name`.
+  Comparação por nome é case-insensitive e ignora espaços nas pontas: se já
+  existir uma categoria com esse nome, retorna a categoria existente em vez
+  de criar uma duplicata. Permite ao editor cadastrar uma categoria nova
+  direto na tela de criar/editar post, sem precisar de uma tela
+  administrativa separada de gestão de categorias.
 
 ## Requisitos não funcionais
 
@@ -60,6 +72,20 @@ Response `200`: lista paginada, apenas `published`.
 ### `GET /api/posts/{slug}` (público)
 Response `200`: post publicado. `404` se não existir ou não estiver publicado.
 
+### `GET /api/admin/categories` (auth: editor|admin)
+Response `200`: lista de categorias (`[{"id": "uuid", "name": "string"}]`),
+ordenadas por nome.
+
+### `POST /api/admin/categories` (auth: editor|admin)
+Request:
+```json
+{ "name": "string" }
+```
+Response `201` se criou uma categoria nova, `200` se já existia uma com
+esse nome (case-insensitive) — em ambos os casos, o corpo é a categoria
+(`{"id": "uuid", "name": "string"}`). `422` se `name` estiver ausente ou
+vazio/só espaços.
+
 ## Critérios de aceite
 
 1. **Dado** um título "Como usar SDD", **quando** o post é criado, **então**
@@ -73,6 +99,13 @@ Response `200`: post publicado. `404` se não existir ou não estiver publicado.
    `include_deleted=true` seja passado).
 5. **Dado** uma listagem pública, **quando** requisitada a página 2 com
    `page_size=10`, **então** retorna os posts de 11 a 20 ordenados por data.
+6. **Dado** nenhuma categoria chamada "Tecnologia", **quando**
+   `POST /api/admin/categories` é chamado com `{"name": "Tecnologia"}`,
+   **então** cria e retorna a categoria com `201`.
+7. **Dado** uma categoria "Tecnologia" já existente, **quando**
+   `POST /api/admin/categories` é chamado com `{"name": "tecnologia"}`
+   (case diferente), **então** retorna a categoria já existente com `200`,
+   sem criar uma segunda linha.
 
 ## Casos de teste obrigatórios
 
@@ -82,6 +115,11 @@ Response `200`: post publicado. `404` se não existir ou não estiver publicado.
 - Post `draft` não é acessível publicamente (404).
 - Paginação retorna os itens corretos e metadados (total, página atual).
 - Usuário sem autenticação não consegue criar/editar/excluir (401/403).
+- `GET /api/admin/categories` lista categorias existentes ordenadas por
+  nome; 401 sem autenticação.
+- `POST /api/admin/categories` cria categoria nova (`201`); nome repetido
+  (case-insensitive) retorna a existente (`200`) sem duplicar; nome
+  ausente/vazio retorna `422`; 401 sem autenticação.
 
 ## Fora de escopo
 - Versionamento de revisões do post.
