@@ -149,7 +149,8 @@ describe("AdminPostsPage (SPEC-002)", () => {
     const titleInput = await screen.findByLabelText(/título/i);
     await user.type(titleInput, newPost.title);
     await user.type(screen.getByLabelText(/conteúdo/i), newPost.content_markdown);
-    await user.type(screen.getByLabelText(/categoria/i), newPost.category_id);
+    await screen.findByRole("option", { name: /tecnologia/i });
+    await user.selectOptions(screen.getByLabelText(/categoria/i), newPost.category_id);
     await user.click(screen.getByRole("button", { name: /salvar/i }));
 
     expect(await screen.findByText(newPost.title)).toBeInTheDocument();
@@ -177,7 +178,9 @@ describe("AdminPostsPage (SPEC-002)", () => {
     await user.click(within(row).getByRole("button", { name: /editar/i }));
 
     expect(screen.getByLabelText(/título/i)).toHaveValue(draftPost.title);
-    expect(screen.getByLabelText(/categoria/i)).toHaveValue(draftPost.category_id);
+    await waitFor(() =>
+      expect(screen.getByLabelText(/categoria/i)).toHaveValue(draftPost.category_id)
+    );
     expect(screen.getByLabelText(/conteúdo/i)).toHaveValue(draftPost.content_markdown);
 
     // Os dados já vieram da listagem — não deve haver nova requisição GET.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import {
   createPost,
   updatePost,
@@ -8,6 +8,7 @@ import {
   type PostInput,
   type PostStatus,
 } from "@/lib/posts-client";
+import { listCategories, type Category } from "@/lib/categories-client";
 
 /**
  * Valores usados para pré-preencher o formulário em modo `create` (ex.:
@@ -51,6 +52,29 @@ export default function PostEditor({ mode, post, initialValues, onSuccess, onCan
   const [status, setStatus] = useState<PostStatus>(post?.status ?? initialValues?.status ?? "draft");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  // RF01 exige uma categoria, mas SPEC-002 não define endpoint de gestão de
+  // categorias — este seletor só lista as já cadastradas. Sem ele, o editor
+  // tinha que digitar um UUID de categoria de cabeça, e o post falhava ao
+  // salvar (violação de chave estrangeira) sempre que o valor não existisse.
+  useEffect(() => {
+    let cancelled = false;
+    listCategories()
+      .then((result) => {
+        if (!cancelled) {
+          setCategories(result);
+        }
+      })
+      .catch(() => {
+        // Falha ao carregar categorias não deve quebrar o formulário — o
+        // select fica só com o placeholder até uma nova tentativa (ex.:
+        // reabrir o formulário).
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -116,14 +140,21 @@ export default function PostEditor({ mode, post, initialValues, onSuccess, onCan
         <label htmlFor="post-category" className="text-sm font-medium text-foreground">
           Categoria
         </label>
-        <input
+        <select
           id="post-category"
           name="category_id"
-          type="text"
+          required
           value={category}
           onChange={(event) => setCategory(event.target.value)}
           className="rounded border border-gray-300 px-3 py-2 text-sm"
-        />
+        >
+          <option value="">Selecione uma categoria</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="flex flex-col gap-1">

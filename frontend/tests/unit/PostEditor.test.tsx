@@ -46,7 +46,8 @@ async function fillForm(user: ReturnType<typeof userEvent.setup>, fields: FillFi
     await user.type(screen.getByLabelText(/conteúdo/i), fields.content);
   }
   if (fields.category !== undefined) {
-    await user.type(screen.getByLabelText(/categoria/i), fields.category);
+    await screen.findByRole("option", { name: new RegExp(fields.category, "i") });
+    await user.selectOptions(screen.getByLabelText(/categoria/i), fields.category);
   }
   if (fields.tags !== undefined) {
     await user.type(screen.getByLabelText(/tags/i), fields.tags);
@@ -140,7 +141,7 @@ describe("PostEditor (SPEC-002)", () => {
   });
 
   describe("modo edit (RF03)", () => {
-    it("dado um post via props, então pré-preenche todos os campos, inclusive category_id como texto livre (sem select)", () => {
+    it("dado um post via props, então pré-preenche todos os campos, inclusive a categoria selecionada", async () => {
       const post = buildAdminPost({
         title: "Post existente",
         content_markdown: "Conteúdo original.",
@@ -154,15 +155,14 @@ describe("PostEditor (SPEC-002)", () => {
 
       expect(screen.getByLabelText(/título/i)).toHaveValue("Post existente");
       expect(screen.getByLabelText(/conteúdo/i)).toHaveValue("Conteúdo original.");
-      expect(screen.getByLabelText(/categoria/i)).toHaveValue("cultura");
+      // A categoria é um <select> alimentado por GET /api/admin/categories
+      // (RF01) — carrega de forma assíncrona, por isso aguarda o valor.
+      await waitFor(() => expect(screen.getByLabelText(/categoria/i)).toHaveValue("cultura"));
+      expect(screen.getByRole("combobox", { name: /categoria/i })).toBeInTheDocument();
       expect(screen.getByLabelText(/imagem de capa/i)).toHaveValue(
         "https://exemplo.com/capa.png"
       );
       expect(screen.getByRole("combobox", { name: /status/i })).toHaveValue("published");
-
-      // category_id é um campo de texto livre — não existe endpoint de
-      // categorias na spec, então não deve haver um <select> para categoria.
-      expect(screen.queryByRole("combobox", { name: /categoria/i })).not.toBeInTheDocument();
     });
 
     it("dado um post existente, quando salva alterações, então chama PUT /api/admin/posts/{id} e dispara onSuccess (RF03)", async () => {
@@ -208,7 +208,7 @@ describe("PostEditor (SPEC-002)", () => {
     await fillForm(user, {
       title: "Post com erro",
       content: "Conteúdo.",
-      category: "invalida",
+      category: "tecnologia",
       status: "draft",
     });
     await user.click(screen.getByRole("button", { name: /salvar/i }));
