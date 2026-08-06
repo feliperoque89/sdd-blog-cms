@@ -31,7 +31,6 @@ interface FillFields {
   content?: string;
   category?: string;
   tags?: string;
-  coverImageUrl?: string;
   status?: "draft" | "published";
 }
 
@@ -52,9 +51,6 @@ async function fillForm(user: ReturnType<typeof userEvent.setup>, fields: FillFi
   if (fields.tags !== undefined) {
     await user.type(screen.getByLabelText(/tags/i), fields.tags);
   }
-  if (fields.coverImageUrl !== undefined) {
-    await user.type(screen.getByLabelText(/imagem de capa/i), fields.coverImageUrl);
-  }
   if (fields.status !== undefined) {
     await user.selectOptions(screen.getByRole("combobox", { name: /status/i }), fields.status);
   }
@@ -71,7 +67,9 @@ describe("PostEditor (SPEC-002)", () => {
       expect(screen.getByLabelText(/conteúdo/i)).toBeRequired();
       expect(screen.getByLabelText(/categoria/i)).toHaveValue("");
       expect(screen.getByLabelText(/tags/i)).toHaveValue("");
-      expect(screen.getByLabelText(/imagem de capa/i)).toHaveValue("");
+      // Upload de capa (SPEC-005): sem post ainda, não mostra preview.
+      expect(screen.getByLabelText(/imagem de capa/i)).toBeInTheDocument();
+      expect(screen.queryByAltText(/preview da imagem de capa/i)).not.toBeInTheDocument();
 
       const statusSelect = screen.getByRole("combobox", { name: /status/i });
       expect(statusSelect).toBeInTheDocument();
@@ -241,7 +239,10 @@ describe("PostEditor (SPEC-002)", () => {
       // (RF01) — carrega de forma assíncrona, por isso aguarda o valor.
       await waitFor(() => expect(screen.getByLabelText(/categoria/i)).toHaveValue("cultura"));
       expect(screen.getByRole("combobox", { name: /categoria/i })).toBeInTheDocument();
-      expect(screen.getByLabelText(/imagem de capa/i)).toHaveValue(
+      // Upload de capa (SPEC-005 / RF05): post existente mostra o preview
+      // da imagem atual.
+      expect(screen.getByAltText(/preview da imagem de capa/i)).toHaveAttribute(
+        "src",
         "https://exemplo.com/capa.png"
       );
       expect(screen.getByRole("combobox", { name: /status/i })).toHaveValue("published");

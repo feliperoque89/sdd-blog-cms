@@ -9,6 +9,7 @@ from app.api.ai_assistant import router as ai_assistant_router
 from app.api.ai_settings import router as ai_settings_router
 from app.api.auth import router as auth_router
 from app.api.categories_admin import router as categories_admin_router
+from app.api.media import router as media_router
 from app.api.posts_admin import router as posts_admin_router
 from app.api.posts_public import router as posts_public_router
 from app.core.config import get_settings
@@ -31,6 +32,7 @@ app.include_router(auth_router)
 app.include_router(ai_assistant_router)
 app.include_router(ai_settings_router)
 app.include_router(categories_admin_router)
+app.include_router(media_router)
 app.include_router(posts_admin_router)
 app.include_router(posts_public_router)
 

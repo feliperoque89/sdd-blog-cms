@@ -28,6 +28,14 @@ dependencies = [
     # Driver MySQL assíncrono usado em produção (DATABASE_URL=mysql+asyncmy://...,
     # ver specs/ARCHITECTURE.md). Não usado pela suíte de testes unitários.
     "asyncmy>=0.2.9",
+    # Client S3 usado por `app.services.media_storage_service.S3MediaStorageClient`
+    # (SPEC-005) para gravar no MinIO em produção (S3-compatible). Síncrono —
+    # chamado sempre via `run_in_threadpool`. Não usado pela suíte de testes
+    # unitários (sempre faz override de `get_media_storage_client` por um fake).
+    "boto3>=1.34",
+    # Exigido pelo FastAPI para decodificar `multipart/form-data`
+    # (`UploadFile`, SPEC-005 — POST /api/admin/media/cover-image).
+    "python-multipart>=0.0.9",
 ]
 
 [project.optional-dependencies]
@@ -40,6 +48,9 @@ dev = [
     "ruff>=0.5",
     "black>=24.4",
     "mypy>=1.10",
+    # Stubs de tipo para boto3/S3 (SPEC-005) — sem isso, mypy não consegue
+    # tipar `boto3.client("s3", ...)`.
+    "boto3-stubs[s3]>=1.34",
 ]
 
 [tool.pytest.ini_options]

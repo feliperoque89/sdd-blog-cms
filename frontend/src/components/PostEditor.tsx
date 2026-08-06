@@ -9,6 +9,7 @@ import {
   type PostStatus,
 } from "@/lib/posts-client";
 import { listCategories, createCategory, type Category } from "@/lib/categories-client";
+import CoverImageUpload from "@/components/CoverImageUpload";
 
 /**
  * Valores usados para pré-preencher o formulário em modo `create` (ex.:
@@ -263,19 +264,10 @@ export default function PostEditor({ mode, post, initialValues, onSuccess, onCan
         />
       </div>
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="post-cover-image" className="text-sm font-medium text-foreground">
-          Imagem de capa (URL, opcional)
-        </label>
-        <input
-          id="post-cover-image"
-          name="cover_image_url"
-          type="text"
-          value={coverImageUrl}
-          onChange={(event) => setCoverImageUrl(event.target.value)}
-          className="rounded border border-gray-300 px-3 py-2 text-sm"
-        />
-      </div>
+      <CoverImageUpload
+        value={coverImageUrl.trim() === "" ? null : coverImageUrl}
+        onChange={(url) => setCoverImageUrl(url)}
+      />
 
       <div className="flex flex-col gap-1">
         <label htmlFor="post-status" className="text-sm font-medium text-foreground">

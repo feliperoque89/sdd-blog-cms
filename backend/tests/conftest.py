@@ -37,6 +37,13 @@ os.environ.setdefault("RATE_LIMIT_LOGIN_WINDOW_SECONDS", "60")
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("COOKIE_SECURE", "false")
+# SPEC-005 — nunca usado de verdade (a suíte sempre faz override de
+# `get_media_storage_client` por um fake), só precisa existir para a
+# `Settings` (pydantic) construir sem erro.
+os.environ.setdefault("MEDIA_STORAGE_ENDPOINT_URL", "http://localhost:9000")
+os.environ.setdefault("MEDIA_STORAGE_ACCESS_KEY", "test-access-key")
+os.environ.setdefault("MEDIA_STORAGE_SECRET_KEY", "test-secret-key")
+os.environ.setdefault("MEDIA_STORAGE_PUBLIC_BASE_URL", "http://localhost:9000/media")
 
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import (

@@ -72,6 +72,20 @@ class Settings(BaseSettings):
     rate_limit_ai_max_attempts: int = 10
     rate_limit_ai_window_seconds: int = 3600
 
+    # Storage de mídia (SPEC-005 — upload de imagem de capa), MinIO
+    # (S3-compatible, ver specs/ARCHITECTURE.md). Sem valor padrão, como
+    # DATABASE_URL/REDIS_URL: exigido via ambiente/`.env`. Nunca usado em
+    # testes unitários (a suíte sempre faz override de
+    # `get_media_storage_client` por um fake).
+    media_storage_endpoint_url: str
+    media_storage_access_key: str
+    media_storage_secret_key: str
+    media_storage_bucket: str = "media"
+    # Base pública usada para montar a URL devolvida ao cliente — pode
+    # divergir de `media_storage_endpoint_url` (ex.: endpoint interno do
+    # cluster vs. host exposto pelo Ingress).
+    media_storage_public_base_url: str
+
 
 @lru_cache
 def get_settings() -> Settings:
