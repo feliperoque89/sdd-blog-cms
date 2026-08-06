@@ -71,6 +71,23 @@ async def run_worker() -> None:  # pragma: no cover - loop infinito de produçã
     próxima geração, sem precisar reiniciar o worker. `build_ai_client`
     (não `HttpAiClient` diretamente) decide Anthropic vs. Gemini a partir de
     `config.provider` (RF06).
+
+    Achado de teste manual (reprodução real contra MySQL, não coberto por
+    `test_ai_worker_spec003.py` — que usa SQLite in-memory e `FakeJobQueue`
+    não-bloqueante, sem transação de longa duração): sem o `db.commit()`
+    logo abaixo, a consulta de `get_effective_llm_config` já abre a
+    transação MySQL (REPEATABLE READ, isolamento padrão do InnoDB, nunca
+    sobrescrito em `app.core.database`) *antes* de `process_one` bloquear em
+    `job_queue.dequeue()` (`BLPOP`, até 5s). Se um job for criado/comitado
+    pela API *durante* essa espera, o snapshot da transação já aberta não
+    enxerga a nova linha — `process_job` chama `get_job_status` e recebe
+    `None`, retornando sem marcar `done`/`failed`. Como o job já saiu da
+    fila do Redis (`BLPOP` é destrutivo), ele fica perdido para sempre com
+    status `pending`, e o editor nunca vê o resultado nem o erro. O
+    `commit()` fecha a transação somente-leitura de `get_effective_llm_config`
+    assim que ela termina, para que a consulta seguinte (dentro de
+    `process_one`, já depois da espera bloqueante) abra uma transação nova
+    — com um snapshot atual — em vez de reaproveitar uma desatualizada.
     """
 
     settings = get_settings()
@@ -84,6 +101,7 @@ async def run_worker() -> None:  # pragma: no cover - loop infinito de produçã
             async with session_maker() as db:
                 config = await get_effective_llm_config(db)
                 ai_client: AiClient = build_ai_client(config)
+                await db.commit()
                 processed = await process_one(db, ai_client, job_queue)
             if not processed:
                 await asyncio.sleep(1)
