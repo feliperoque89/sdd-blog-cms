@@ -31,7 +31,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.core.config import get_settings
 from app.services.ai_assistant_service import JobQueue, get_job_queue, process_job
-from app.services.ai_client import AiClient, get_ai_client
+from app.services.ai_client import AiClient, build_ai_client
+from app.services.ai_settings_service import get_effective_llm_config
 
 logger = logging.getLogger(__name__)
 
@@ -62,18 +63,27 @@ async def run_worker() -> None:  # pragma: no cover - loop infinito de produçã
     vazia, aguarda um curto intervalo antes de tentar novamente (polling).
     Ponto de entrada: `python -m app.workers.ai_worker`, executado como o
     processo do container `worker` (`specs/ARCHITECTURE.md`).
+
+    O client de IA é reconstruído a cada iteração a partir de
+    `get_effective_llm_config` (SPEC-004) em vez de uma instância fixa criada
+    uma única vez no boot — assim, uma configuração salva via
+    `/admin/ai-settings` (provider/model/base_url/api_key/...) já vale na
+    próxima geração, sem precisar reiniciar o worker. `build_ai_client`
+    (não `HttpAiClient` diretamente) decide Anthropic vs. Gemini a partir de
+    `config.provider` (RF06).
     """
 
     settings = get_settings()
     engine = create_async_engine(settings.database_url)
     session_maker = async_sessionmaker(engine, expire_on_commit=False)
     job_queue: JobQueue = get_job_queue()
-    ai_client: AiClient = get_ai_client()
 
     logger.info("Worker de geração de rascunhos via IA iniciado.")
     try:
         while True:
             async with session_maker() as db:
+                config = await get_effective_llm_config(db)
+                ai_client: AiClient = build_ai_client(config)
                 processed = await process_one(db, ai_client, job_queue)
             if not processed:
                 await asyncio.sleep(1)

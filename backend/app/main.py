@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.ai_assistant import router as ai_assistant_router
+from app.api.ai_settings import router as ai_settings_router
 from app.api.auth import router as auth_router
 from app.api.categories_admin import router as categories_admin_router
 from app.api.posts_admin import router as posts_admin_router
@@ -28,6 +29,7 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(ai_assistant_router)
+app.include_router(ai_settings_router)
 app.include_router(categories_admin_router)
 app.include_router(posts_admin_router)
 app.include_router(posts_public_router)

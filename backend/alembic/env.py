@@ -13,7 +13,7 @@ from alembic import context
 # modelo for criado, adicione o import aqui.
 from app.core.config import get_settings
 from app.core.database import Base
-from app.models import assistant_draft, category, post, user  # noqa: F401
+from app.models import ai_settings, assistant_draft, category, post, user  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

@@ -2,3 +2,9 @@
 # para k8s/secret.yaml e preencha localmente, ou gere via `kubectl create
 # secret` / um gerenciador de segredos (ver k8s/secret.example.yaml).
 k8s/secret.yaml
+
+# Variáveis de ambiente locais (DATABASE_URL, JWT_SECRET, etc.) — nunca commitar.
+backend/.env
+frontend/.env*
+!frontend/.env.example
+

@@ -25,6 +25,10 @@ const { redirectMock } = vi.hoisted(() => ({
 
 vi.mock("next/navigation", () => ({
   redirect: redirectMock,
+  // `LogoutButton` (renderizado dentro do header do layout desde que o menu
+  // de navegação admin foi adicionado) chama `useRouter()` — sem este stub,
+  // o mock parcial do módulo deixaria essa chamada undefined.
+  useRouter: () => ({ push: vi.fn() }),
 }));
 
 // Alguns caminhos de implementação podem usar next/headers `cookies()` para

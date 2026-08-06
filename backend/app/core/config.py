@@ -54,6 +54,10 @@ class Settings(BaseSettings):
     # produção, `LLM_API_KEY`/`LLM_MODEL` vêm de variáveis de ambiente (ver
     # specs/ARCHITECTURE.md). Nunca usados em testes unitários (a suíte
     # sempre faz override de `get_ai_client` por um fake).
+    # Provedor da LLM (SPEC-004 / RF06): "anthropic" ou "gemini" — decide qual
+    # implementação de `app.services.ai_client.AiClient` é usada
+    # (`build_ai_client`). Sobreponível via `/admin/ai-settings`.
+    llm_provider: str = "anthropic"
     llm_api_key: str | None = None
     llm_model: str = "claude-sonnet-4-6"
     llm_api_base_url: str = "https://api.anthropic.com/v1/messages"
