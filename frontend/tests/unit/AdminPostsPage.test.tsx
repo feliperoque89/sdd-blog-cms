@@ -86,6 +86,29 @@ describe("AdminPostsPage (SPEC-002)", () => {
     ).toBeInTheDocument();
   });
 
+  it("dado um post com cover_image_url, então a linha mostra uma miniatura da capa (SPEC-005)", async () => {
+    const postWithCover: AdminPost = {
+      ...publishedPost,
+      id: "post-com-capa",
+      title: "Post com capa",
+      cover_image_url: "http://minio.local/media/cover-images/x.jpg",
+    };
+    mockAdminPostsList([draftPost, postWithCover]);
+
+    render(<AdminPostsPage />);
+
+    await screen.findByText(postWithCover.title);
+    const row = findRowByText(postWithCover.title);
+    expect(within(row).getByRole("img", { name: postWithCover.title })).toHaveAttribute(
+      "src",
+      postWithCover.cover_image_url as string
+    );
+
+    // draftPost não tem capa — sua linha não deve ter <img>.
+    const draftRow = findRowByText(draftPost.title);
+    expect(within(draftRow).queryByRole("img")).not.toBeInTheDocument();
+  });
+
   it("dado o filtro de status, quando seleciona 'draft', então refaz o fetch com ?status=draft e some com os posts publicados (RF05)", async () => {
     let lastStatus: string | null = null;
     server.use(

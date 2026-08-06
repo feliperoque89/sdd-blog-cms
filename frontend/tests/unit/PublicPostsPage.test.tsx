@@ -61,6 +61,36 @@ describe("HomePage — blog público (SPEC-002)", () => {
       "href",
       `/posts/${postB.slug}`
     );
+
+    // postA/postB não têm capa (cover_image_url: null) — não deve renderizar <img>.
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+  });
+
+  it("dado um post com cover_image_url, então renderiza sua imagem de capa (SPEC-005)", async () => {
+    const postWithCover: PublicPost = {
+      ...postA,
+      id: "post-com-capa",
+      slug: "post-com-capa",
+      title: "Post com capa",
+      cover_image_url: "http://minio.local/media/cover-images/x.jpg",
+    };
+
+    server.use(
+      http.get(`${API_URL}/api/posts`, () =>
+        HttpResponse.json(
+          { items: [postWithCover], total: 1, page: 1, page_size: 10 },
+          { status: 200 }
+        )
+      )
+    );
+
+    const element = await HomePage({ searchParams: Promise.resolve({}) });
+    render(element as React.ReactElement);
+
+    expect(screen.getByRole("img", { name: postWithCover.title })).toHaveAttribute(
+      "src",
+      postWithCover.cover_image_url as string
+    );
   });
 
   it("dado searchParams com page='2', então propaga ?page=2 na chamada a GET /api/posts (RNF02)", async () => {

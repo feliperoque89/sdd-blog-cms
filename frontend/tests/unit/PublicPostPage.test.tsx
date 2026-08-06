@@ -74,5 +74,32 @@ describe("PostPage — post individual do blog público (SPEC-002)", () => {
     expect(screen.getByText(post.title)).toBeInTheDocument();
     expect(screen.getByText(/conteúdo completo do post em markdown/i)).toBeInTheDocument();
     expect(notFoundMock).not.toHaveBeenCalled();
+    // post.cover_image_url é null — não deve renderizar <img>.
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+  });
+
+  it("dado um post com cover_image_url, então renderiza sua imagem de capa (SPEC-005)", async () => {
+    const post: PublicPost = {
+      id: "post-2",
+      title: "Post com capa",
+      slug: "post-com-capa",
+      content_markdown: "Conteúdo.",
+      category_id: "tecnologia",
+      tags: [],
+      cover_image_url: "http://minio.local/media/cover-images/x.jpg",
+      published_at: "2026-01-01T00:00:00Z",
+    };
+
+    server.use(
+      http.get(`${API_URL}/api/posts/:slug`, () => HttpResponse.json(post, { status: 200 }))
+    );
+
+    const element = await PostPage({ params: Promise.resolve({ slug: "post-com-capa" }) });
+    render(element as React.ReactElement);
+
+    expect(screen.getByRole("img", { name: post.title })).toHaveAttribute(
+      "src",
+      post.cover_image_url as string
+    );
   });
 });

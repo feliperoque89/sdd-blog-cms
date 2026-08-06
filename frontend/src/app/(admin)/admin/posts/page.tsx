@@ -194,6 +194,9 @@ export default function AdminPostsPage() {
         <thead>
           <tr className="border-b border-gray-200">
             <th scope="col" className="py-2 pr-4 font-medium text-gray-600">
+              Capa
+            </th>
+            <th scope="col" className="py-2 pr-4 font-medium text-gray-600">
               Título
             </th>
             <th scope="col" className="py-2 pr-4 font-medium text-gray-600">
@@ -207,6 +210,16 @@ export default function AdminPostsPage() {
         <tbody>
           {posts.map((post) => (
             <tr key={post.id} className="border-b border-gray-100">
+              <td className="py-2 pr-4">
+                {post.cover_image_url && (
+                  // eslint-disable-next-line @next/next/no-img-element -- URL vem do MinIO/S3 (host dinâmico por ambiente), não do domínio de imagens otimizadas do Next.
+                  <img
+                    src={post.cover_image_url}
+                    alt={post.title}
+                    className="h-10 w-10 rounded object-cover"
+                  />
+                )}
+              </td>
               <td className="py-2 pr-4">{post.title}</td>
               <td className="py-2 pr-4">{post.status}</td>
               <td className="py-2 pr-4">

@@ -31,7 +31,15 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
       <ul className="mt-8 flex flex-col gap-6">
         {items.map((post) => (
-          <li key={post.id}>
+          <li key={post.id} className="flex items-center gap-4">
+            {post.cover_image_url && (
+              // eslint-disable-next-line @next/next/no-img-element -- URL vem do MinIO/S3 (host dinâmico por ambiente), não do domínio de imagens otimizadas do Next.
+              <img
+                src={post.cover_image_url}
+                alt={post.title}
+                className="h-16 w-16 shrink-0 rounded object-cover"
+              />
+            )}
             <Link
               href={`/posts/${post.slug}`}
               className="text-lg font-semibold text-blue-700 hover:underline"
