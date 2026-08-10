@@ -120,7 +120,7 @@ implementação. Código sem spec correspondente deve ser tratado como débito t
 ## Comandos úteis
 
 ```bash
-# Subir tudo num cluster local (kind/minikube/Docker Desktop Kubernetes)
+# Subir tudo num cluster local (kind/minikube/Docker Desktop Kubernetes). Sempre configurar o nome e tag das imagens criadas.
 docker build -f docker/backend.Dockerfile -t sdd-blog-cms-backend:local backend/
 docker build -f docker/frontend.Dockerfile -t sdd-blog-cms-frontend:local frontend/
 kind load docker-image sdd-blog-cms-backend:local sdd-blog-cms-frontend:local  # só em kind; minikube usa `minikube image load`

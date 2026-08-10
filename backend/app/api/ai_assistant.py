@@ -20,6 +20,7 @@ from app.schemas.ai_assistant import (
     GenerateDraftAccepted,
     GenerateDraftRequest,
     JobStatusResponse,
+    TokenUsage,
 )
 from app.services import ai_assistant_service
 from app.services.ai_assistant_service import (
@@ -94,4 +95,10 @@ async def get_generate_draft_status(
             tags=job.result_tags or [],
         )
 
-    return JobStatusResponse(job_id=job.id, status=job.status, result=result, error=job.error)
+    usage: TokenUsage | None = None
+    if job.tokens_input is not None and job.tokens_output is not None:
+        usage = TokenUsage(tokens_input=job.tokens_input, tokens_output=job.tokens_output)
+
+    return JobStatusResponse(
+        job_id=job.id, status=job.status, result=result, error=job.error, usage=usage
+    )

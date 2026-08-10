@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import ReactMarkdown from "react-markdown";
 import { getPublicPostBySlug } from "@/lib/posts-client";
 
 interface PostPageProps {
@@ -24,7 +25,9 @@ export default async function PostPage({ params }: PostPageProps) {
           className="mt-6 w-full rounded object-cover"
         />
       )}
-      <div className="mt-6 whitespace-pre-wrap text-gray-800">{post.content_markdown}</div>
+      <div className="prose prose-neutral mt-6 max-w-none text-gray-800">
+        <ReactMarkdown>{post.content_markdown}</ReactMarkdown>
+      </div>
     </main>
   );
 }

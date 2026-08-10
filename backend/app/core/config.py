@@ -72,6 +72,14 @@ class Settings(BaseSettings):
     rate_limit_ai_max_attempts: int = 10
     rate_limit_ai_window_seconds: int = 3600
 
+    # RNF01a: idade máxima (segundos) que um job `pending` pode ter antes de
+    # ser considerado travado (worker parado/derrubado, fila com problema) e
+    # marcado como `failed` na próxima consulta de status. Maior que
+    # `llm_timeout_seconds` para não competir com o timeout normal da
+    # chamada à LLM — só existe para cobrir os casos em que o job nunca
+    # chegou a ser processado ou o worker morreu no meio do processamento.
+    draft_job_stale_after_seconds: int = 90
+
     # Storage de mídia (SPEC-005 — upload de imagem de capa), MinIO
     # (S3-compatible, ver specs/ARCHITECTURE.md). Sem valor padrão, como
     # DATABASE_URL/REDIS_URL: exigido via ambiente/`.env`. Nunca usado em

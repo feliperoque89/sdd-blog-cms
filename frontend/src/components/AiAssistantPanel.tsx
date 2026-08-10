@@ -7,10 +7,19 @@ import {
   type AssistantDraftResult,
   type DraftLength,
   type DraftTone,
+  type TokenUsage,
 } from "@/lib/ai-assistant-client";
 
 export interface AiAssistantPanelProps {
   onDraftReady?: (result: AssistantDraftResult) => void;
+  /**
+   * Override do limite de espera do polling (ms) — existe só para permitir
+   * testar o comportamento de timeout com uma espera curta, sem recorrer a
+   * fake timers (ver nota em AiAssistantPanel.test.tsx sobre por que este
+   * arquivo evita fake timers). Produção sempre usa o default
+   * (`POLL_TIMEOUT_MS`, 120s).
+   */
+  pollTimeoutMs?: number;
 }
 
 // A spec (SPEC-003) não define o intervalo exato de polling — assumimos
@@ -19,6 +28,17 @@ export interface AiAssistantPanelProps {
 // esperar um ciclo inteiro à toa) e, enquanto pendente, repetimos a cada
 // POLL_INTERVAL_MS.
 const POLL_INTERVAL_MS = 2000;
+
+// Limite de espera do polling no cliente. Rede de segurança além do
+// mecanismo do backend (SPEC-003 RNF01a: um job `pending` travado — worker
+// parado, caído no meio do processamento, etc. — expira sozinho em até
+// `DRAFT_JOB_STALE_AFTER_SECONDS`, 90s por padrão) — cobre também o caso de
+// o próprio backend ficar inacessível durante o polling. Sem isso, o editor
+// via ficar vendo "Gerando rascunho..." indefinidamente.
+const POLL_TIMEOUT_MS = 120_000;
+
+const POLL_TIMEOUT_MESSAGE =
+  "A geração está demorando mais que o esperado e foi cancelada. Tente novamente.";
 
 // Quantidade de caracteres do conteúdo markdown exibidos como preview antes
 // de o editor decidir usar o rascunho (o conteúdo completo é sempre
@@ -34,7 +54,10 @@ function parseKeywords(keywordsInput: string): string[] {
     .filter((keyword) => keyword.length > 0);
 }
 
-export default function AiAssistantPanel({ onDraftReady }: AiAssistantPanelProps) {
+export default function AiAssistantPanel({
+  onDraftReady,
+  pollTimeoutMs = POLL_TIMEOUT_MS,
+}: AiAssistantPanelProps) {
   const [topic, setTopic] = useState("");
   const [tone, setTone] = useState<DraftTone>("formal");
   const [keywordsInput, setKeywordsInput] = useState("");
@@ -43,19 +66,31 @@ export default function AiAssistantPanel({ onDraftReady }: AiAssistantPanelProps
   const [jobId, setJobId] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [result, setResult] = useState<AssistantDraftResult | null>(null);
+  const [usage, setUsage] = useState<TokenUsage | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Polling do status do job enquanto `pending` for true. Reinicia sempre
   // que um novo job é criado e para (limpando o intervalo) assim que o job
-  // sai do estado pending ou o componente desmonta.
+  // sai do estado pending, o limite de tempo do cliente é atingido, ou o
+  // componente desmonta.
   useEffect(() => {
     if (!jobId || !pending) {
       return;
     }
 
     let cancelled = false;
+    const startedAt = Date.now();
 
     function poll() {
+      if (Date.now() - startedAt > pollTimeoutMs) {
+        clearInterval(intervalId);
+        if (!cancelled) {
+          setError(POLL_TIMEOUT_MESSAGE);
+          setPending(false);
+        }
+        return;
+      }
+
       getDraftJobStatus(jobId as string)
         .then((status) => {
           if (cancelled) {
@@ -64,9 +99,11 @@ export default function AiAssistantPanel({ onDraftReady }: AiAssistantPanelProps
 
           if (status.status === "done") {
             setResult(status.result ?? null);
+            setUsage(status.usage ?? null);
             setPending(false);
           } else if (status.status === "failed") {
             setError(status.error ?? GENERIC_ERROR_MESSAGE);
+            setUsage(status.usage ?? null);
             setPending(false);
           }
         })
@@ -79,20 +116,21 @@ export default function AiAssistantPanel({ onDraftReady }: AiAssistantPanelProps
         });
     }
 
-    poll();
     const intervalId = setInterval(poll, POLL_INTERVAL_MS);
+    poll();
 
     return () => {
       cancelled = true;
       clearInterval(intervalId);
     };
-  }, [jobId, pending]);
+  }, [jobId, pending, pollTimeoutMs]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     setError(null);
     setResult(null);
+    setUsage(null);
 
     try {
       const response = await generateDraft({
@@ -183,6 +221,12 @@ export default function AiAssistantPanel({ onDraftReady }: AiAssistantPanelProps
         {error && (
           <p role="alert" className="text-sm text-red-600">
             {error}
+          </p>
+        )}
+
+        {usage && (
+          <p className="text-xs text-gray-500">
+            Tokens usados — entrada: {usage.tokens_input} · saída: {usage.tokens_output}
           </p>
         )}
 

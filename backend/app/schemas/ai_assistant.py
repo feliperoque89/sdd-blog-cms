@@ -77,14 +77,25 @@ class GeneratedDraftResult(BaseModel):
     tags: list[Annotated[str, Field(max_length=MAX_TAG_LENGTH)]] = Field(max_length=5)
 
 
+class TokenUsage(BaseModel):
+    """Uso de tokens da chamada à LLM (RF08/RNF04) — transparência de custo para o editor."""
+
+    tokens_input: int
+    tokens_output: int
+
+
 class JobStatusResponse(BaseModel):
     """Resposta de `GET /api/posts/generate-draft/{job_id}` (RF05).
 
     `result` só é preenchido quando `status == "done"`; `error` (mensagem
-    genérica — RNF02) só é preenchido quando `status == "failed"`.
+    genérica — RNF02) só é preenchido quando `status == "failed"`. `usage`
+    é preenchido sempre que a LLM chegou a responder (mesmo que o job tenha
+    falhado depois, na validação de schema) — `None` se a chamada nunca
+    aconteceu (ex.: job ainda `pending`, ou falhou antes de chamar a LLM).
     """
 
     job_id: str
     status: JobStatus
     result: GeneratedDraftResult | None = None
     error: str | None = None
+    usage: TokenUsage | None = None

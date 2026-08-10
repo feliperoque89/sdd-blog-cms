@@ -25,11 +25,17 @@ export interface AssistantDraftResult {
 
 export type DraftJobState = "pending" | "done" | "failed";
 
+export interface TokenUsage {
+  tokens_input: number;
+  tokens_output: number;
+}
+
 export interface DraftJobStatus {
   job_id: string;
   status: DraftJobState;
   result?: AssistantDraftResult;
   error?: string;
+  usage?: TokenUsage | null;
 }
 
 export interface GenerateDraftResponse {

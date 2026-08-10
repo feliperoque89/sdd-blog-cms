@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import uuid
+from datetime import UTC, datetime
 from typing import Protocol
 
 import redis.asyncio as aioredis
@@ -223,6 +224,47 @@ async def get_job_status(db: AsyncSession, job_id: str) -> AssistantDraft | None
     return result.scalar_one_or_none()
 
 
+def _as_utc(value: datetime) -> datetime:
+    """Normaliza `value` para aware-UTC.
+
+    MySQL não guarda tzinfo (`DateTime(timezone=True)` grava sempre em UTC
+    por convenção do código, mas o driver devolve datetime naive na leitura)
+    — sem isso, comparar com `datetime.now(UTC)` levantaria `TypeError`.
+    """
+
+    return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+
+
+async def _fail_if_stale_pending(db: AsyncSession, job: AssistantDraft) -> AssistantDraft:
+    """RNF01a: expira jobs `pending` travados (nunca processados pelo worker).
+
+    O timeout de 30s (RNF01) só protege a chamada à LLM depois que o worker
+    já tirou o job da fila — não cobre worker parado, derrubado no meio do
+    processamento, ou falha na fila. Sem isso, o editor ficaria vendo
+    "Gerando rascunho..." para sempre nesses casos. Chamado a cada consulta
+    de status; idempotente (só muta/comita se ainda estiver `pending` e
+    velho o suficiente).
+    """
+
+    if job.status != JobStatus.PENDING:
+        return job
+
+    age_seconds = (datetime.now(UTC) - _as_utc(job.created_at)).total_seconds()
+    settings = get_settings()
+    if age_seconds <= settings.draft_job_stale_after_seconds:
+        return job
+
+    logger.warning(
+        "Job de geração de rascunho %s expirado após %.0fs em 'pending' — marcado como 'failed'.",
+        job.id,
+        age_seconds,
+    )
+    job.status = JobStatus.FAILED
+    job.error = _GENERIC_PROCESSING_ERROR
+    await db.commit()
+    return job
+
+
 async def get_job_status_for_user(
     db: AsyncSession, job_id: str, *, user: User
 ) -> AssistantDraft | None:
@@ -240,7 +282,7 @@ async def get_job_status_for_user(
         return None
     if user.role != UserRole.ADMIN and job.editor_id != user.id:
         return None
-    return job
+    return await _fail_if_stale_pending(db, job)
 
 
 def _contains_system_prompt_canary(result: GeneratedDraftResult) -> bool:
@@ -297,6 +339,12 @@ async def process_job(db: AsyncSession, ai_client: AiClient, job_id: str) -> Non
             generation_result.usage.tokens_input,
             generation_result.usage.tokens_output,
         )
+        # RF08: persistido já aqui (antes da validação de schema abaixo) —
+        # o custo já foi incorrido assim que a LLM respondeu, então o editor
+        # deve ver o uso de tokens mesmo se o job vier a falhar na validação
+        # logo em seguida.
+        job.tokens_input = generation_result.usage.tokens_input
+        job.tokens_output = generation_result.usage.tokens_output
         result = GeneratedDraftResult.model_validate(generation_result.data)
     except (AiClientError, ValidationError, TimeoutError) as exc:
         logger.warning(

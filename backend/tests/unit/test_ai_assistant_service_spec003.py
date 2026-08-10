@@ -721,3 +721,104 @@ async def test_generated_draft_is_linked_to_editor_and_does_not_create_a_post_sp
 
     posts_result = await db_session.execute(select(Post))
     assert posts_result.scalars().all() == []
+
+
+# ---------------------------------------------------------------------------
+# RF08/RNF04 — uso de tokens persistido e exposto na resposta de status.
+# ---------------------------------------------------------------------------
+async def test_generate_draft_job_done_returns_token_usage_spec003(
+    editor_client: AsyncClient, db_session
+) -> None:
+    job_id = await _create_job(editor_client)
+    ai_client = FakeAiClient(
+        response=VALID_LLM_RESULT, usage=AiUsage(tokens_input=321, tokens_output=987)
+    )
+
+    await process_job(db_session, ai_client, job_id)
+
+    response = await editor_client.get(f"{GENERATE_DRAFT_URL}/{job_id}")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "done"
+    assert body["usage"] == {"tokens_input": 321, "tokens_output": 987}
+
+
+async def test_generate_draft_pending_job_returns_no_usage_spec003(
+    editor_client: AsyncClient,
+) -> None:
+    job_id = await _create_job(editor_client)
+
+    response = await editor_client.get(f"{GENERATE_DRAFT_URL}/{job_id}")
+
+    assert response.status_code == 200
+    assert response.json()["usage"] is None
+
+
+async def test_generate_draft_failed_validation_still_persists_token_usage_spec003(
+    editor_client: AsyncClient, db_session
+) -> None:
+    """O custo da chamada à LLM já foi incorrido assim que ela respondeu —
+    mesmo que o resultado falhe na validação de schema logo em seguida
+    (ex.: campo fora do contrato), o uso de tokens já registrado não deve
+    ser perdido.
+    """
+
+    job_id = await _create_job(editor_client)
+    disobedient_response = {**VALID_LLM_RESULT, "extra_field": "fora do schema"}
+    ai_client = FakeAiClient(
+        response=disobedient_response, usage=AiUsage(tokens_input=50, tokens_output=10)
+    )
+
+    await process_job(db_session, ai_client, job_id)
+
+    response = await editor_client.get(f"{GENERATE_DRAFT_URL}/{job_id}")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "failed"
+    assert body["usage"] == {"tokens_input": 50, "tokens_output": 10}
+
+
+# ---------------------------------------------------------------------------
+# RNF01a — job `pending` travado (nunca processado pelo worker) expira em vez
+# de deixar o editor esperando "Gerando rascunho..." para sempre.
+# ---------------------------------------------------------------------------
+async def test_generate_draft_pending_job_older_than_stale_threshold_becomes_failed_spec003(
+    editor_client: AsyncClient, db_session
+) -> None:
+    job_id = await _create_job(editor_client)
+
+    # Simula um job travado: nenhum worker chamou `process_job`, e o job foi
+    # criado há mais tempo do que `settings.draft_job_stale_after_seconds`
+    # (default 90s) permite ficar `pending`.
+    job = (
+        await db_session.execute(select(AssistantDraft).where(AssistantDraft.id == job_id))
+    ).scalar_one()
+    job.created_at = datetime.now(UTC) - timedelta(seconds=200)
+    await db_session.commit()
+
+    response = await editor_client.get(f"{GENERATE_DRAFT_URL}/{job_id}")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "failed"
+    assert body.get("result") is None
+    assert body.get("error")
+
+
+async def test_generate_draft_pending_job_within_stale_threshold_stays_pending_spec003(
+    editor_client: AsyncClient, db_session
+) -> None:
+    job_id = await _create_job(editor_client)
+
+    job = (
+        await db_session.execute(select(AssistantDraft).where(AssistantDraft.id == job_id))
+    ).scalar_one()
+    job.created_at = datetime.now(UTC) - timedelta(seconds=5)
+    await db_session.commit()
+
+    response = await editor_client.get(f"{GENERATE_DRAFT_URL}/{job_id}")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "pending"

@@ -246,6 +246,51 @@ describe("AiAssistantPanel (SPEC-003)", () => {
     expect(screen.getByRole("button", { name: /gerar rascunho/i })).toBeInTheDocument();
   });
 
+  it("dado um job concluído com sucesso, quando o editor consulta o status, então exibe os tokens de entrada e saída usados na geração", async () => {
+    mockGenerateDraft("job-usage");
+    mockJobStatusSequence("job-usage", [
+      { job_id: "job-usage", status: "pending" },
+      {
+        job_id: "job-usage",
+        status: "done",
+        result: draftResult,
+        usage: { tokens_input: 321, tokens_output: 987 },
+      },
+    ]);
+
+    const user = userEvent.setup();
+    render(<AiAssistantPanel />);
+
+    await fillAndSubmit(user, { topic: "Tópico com uso de tokens" });
+    await screen.findByText(/gerando/i, {}, { timeout: 3000 });
+    await screen.findByText(draftResult.title, {}, { timeout: ASSUMED_POLL_INTERVAL_MS * 2 + 1000 });
+
+    expect(screen.getByText(/321/)).toBeInTheDocument();
+    expect(screen.getByText(/987/)).toBeInTheDocument();
+  });
+
+  it("dado um job que fica pending além do limite de espera do cliente (worker travado/backend inacessível), quando o tempo de polling se esgota, então para de consultar e exibe erro de timeout em vez de travar para sempre em 'Gerando...'", async () => {
+    // Usa espera real com um `pollTimeoutMs` curto (mesmo espírito de
+    // `reachDoneState`, que evita fake timers deliberadamente — ver nota no
+    // topo do arquivo) em vez de tentar simular 120s do default de produção.
+    const SHORT_POLL_TIMEOUT_MS = 500;
+    mockGenerateDraft("job-stuck");
+    // Sempre "pending" — simula um worker que nunca processa o job (o
+    // cenário relatado: a UI travava para sempre em "Gerando rascunho...").
+    mockJobStatusSequence("job-stuck", [{ job_id: "job-stuck", status: "pending" }]);
+
+    const user = userEvent.setup();
+    render(<AiAssistantPanel pollTimeoutMs={SHORT_POLL_TIMEOUT_MS} />);
+
+    await fillAndSubmit(user, { topic: "Tópico cujo job nunca sai de pending" });
+    expect(await screen.findByText(/gerando/i, {}, { timeout: 3000 })).toBeInTheDocument();
+
+    expect(
+      await screen.findByRole("alert", {}, { timeout: ASSUMED_POLL_INTERVAL_MS * 2 + 1000 })
+    ).toHaveTextContent(/demorando mais que o esperado/i);
+    expect(screen.queryByText(/gerando/i)).not.toBeInTheDocument();
+  });
+
   it("dado um usuário que excedeu o rate limit, quando solicita nova geração, então POST retorna 429 e exibe a mensagem de limite excedido via role=alert (critério de aceite 4)", async () => {
     server.use(
       http.post(`${API_URL}/api/posts/generate-draft`, () =>

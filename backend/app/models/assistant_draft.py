@@ -13,7 +13,7 @@ from __future__ import annotations
 import enum
 from datetime import UTC, datetime
 
-from sqlalchemy import JSON, DateTime, ForeignKey, String, Text
+from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -58,6 +58,13 @@ class AssistantDraft(Base):
         String(160), nullable=True, default=None
     )
     result_tags: Mapped[list[str] | None] = mapped_column(JSON, nullable=True, default=None)
+
+    # Uso de tokens reportado pela API da LLM (RF08/RNF04), preenchido assim
+    # que a chamada responde com sucesso — independentemente de o job ainda
+    # vir a falhar depois na validação do schema, já que o custo já foi
+    # incorrido nesse ponto.
+    tokens_input: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
+    tokens_output: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
 
     # Mensagem de erro genérica (RNF02 — nunca a exceção interna), preenchida
     # apenas quando `status=failed`.
