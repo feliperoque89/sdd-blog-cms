@@ -1,0 +1,78 @@
+name: Publish images
+
+# Dispara em tags `vX.Y.Z` (release) ou manualmente via "Run workflow".
+# Publica a MESMA imagem em dois registries: Docker Hub e Google Artifact
+# Registry. Ver instruções de setup único (secrets/vars/gcloud) no PR/README
+# que introduziu este workflow.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag da imagem (ex: v1.2.3)"
+        required: true
+
+permissions:
+  contents: read
+  id-token: write # obrigatório para autenticação via Workload Identity Federation (sem chave de service account)
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: backend
+            dockerfile: docker/backend.Dockerfile
+            context: backend
+          - name: frontend
+            dockerfile: docker/frontend.Dockerfile
+            context: frontend
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Resolver tag da imagem
+        id: vars
+        run: echo "tag=${{ github.event.inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
+
+      - name: Build args específicos por imagem
+        id: args
+        run: |
+          if [ "${{ matrix.name }}" = "frontend" ]; then
+            echo "build_args=NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "build_args=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login no Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Autenticar no Google Cloud (Workload Identity Federation)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+
+      - name: Login no Artifact Registry
+        run: gcloud auth configure-docker ${{ vars.GCP_REGION }}-docker.pkg.dev --quiet
+
+      - name: Build e push — ${{ matrix.name }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          build-args: ${{ steps.args.outputs.build_args }}
+          tags: |
+            ${{ vars.DOCKERHUB_NAMESPACE }}/sdd-blog-cms-${{ matrix.name }}:${{ steps.vars.outputs.tag }}
+            ${{ vars.DOCKERHUB_NAMESPACE }}/sdd-blog-cms-${{ matrix.name }}:latest
+            ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.ARTIFACT_REPO }}/${{ matrix.name }}:${{ steps.vars.outputs.tag }}
+            ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.ARTIFACT_REPO }}/${{ matrix.name }}:latest

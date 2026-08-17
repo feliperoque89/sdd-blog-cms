@@ -1,12 +1,20 @@
-# Requer um Ingress controller instalado no cluster (ex.: ingress-nginx) —
-# não incluso aqui, é infraestrutura do cluster, não da aplicação.
+# GKE: usa o controller de Ingress nativo do Google Cloud (classe `gce`,
+# já embutido no cluster — nada a instalar). Ele provisiona um HTTP(S) Load
+# Balancer real do GCP e cria os backends via NEG (ver anotação
+# `cloud.google.com/neg` nos Services em 06-backend.yaml e 08-frontend.yaml).
+#
+# Pré-requisito (uma vez só): reservar um IP externo estático global e
+# referenciar o nome dele abaixo, senão o LB sobe com IP efêmero:
+#   gcloud compute addresses create sdd-blog-cms-ip --global
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: sdd-blog-cms
   namespace: sdd-blog-cms
+  annotations:
+    kubernetes.io/ingress.global-static-ip-name: sdd-blog-cms-ip
 spec:
-  ingressClassName: nginx
+  ingressClassName: gce
   rules:
     - host: blog.local # ajuste para o domínio real em produção
       http:
