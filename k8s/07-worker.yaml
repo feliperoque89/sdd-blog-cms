@@ -26,6 +26,20 @@ spec:
                 name: backend-config
             - secretRef:
                 name: backend-secrets
+          env:
+            # Mesmo motivo do backend (ver 06-backend.yaml): Settings exige
+            # MEDIA_STORAGE_ACCESS_KEY/SECRET_KEY (SPEC-005), reaproveitadas
+            # do Secret do MinIO em vez de duplicadas.
+            - name: MEDIA_STORAGE_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-secrets
+                  key: MINIO_ROOT_USER
+            - name: MEDIA_STORAGE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-secrets
+                  key: MINIO_ROOT_PASSWORD
           # Sem probes HTTP: `run_worker` é um loop de consumo (BLPOP-style
           # polling via `JobQueue.dequeue`), não um servidor. Se o processo
           # morrer, o restartPolicy padrão do Deployment (Always) já cobre

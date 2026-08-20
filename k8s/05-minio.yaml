@@ -73,6 +73,10 @@ kind: Service
 metadata:
   name: minio
   namespace: sdd-blog-cms
+  annotations:
+    # Container-native load balancing: necessário pro Ingress do GKE
+    # (09-ingress.yaml) enxergar este Service, já que ele roteia /media pra cá.
+    cloud.google.com/neg: '{"ingress": true}'
 spec:
   selector:
     app: minio

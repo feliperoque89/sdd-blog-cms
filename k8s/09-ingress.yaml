@@ -1,7 +1,8 @@
 # GKE: usa o controller de Ingress nativo do Google Cloud (classe `gce`,
 # já embutido no cluster — nada a instalar). Ele provisiona um HTTP(S) Load
 # Balancer real do GCP e cria os backends via NEG (ver anotação
-# `cloud.google.com/neg` nos Services em 06-backend.yaml e 08-frontend.yaml).
+# `cloud.google.com/neg` nos Services em 05-minio.yaml, 06-backend.yaml e
+# 08-frontend.yaml).
 #
 # Pré-requisito (uma vez só): reservar um IP externo estático global e
 # referenciar o nome dele abaixo, senão o LB sobe com IP efêmero:
@@ -29,6 +30,17 @@ spec:
                 name: backend
                 port:
                   number: 8000
+          # Serve o bucket "media" (MEDIA_STORAGE_BUCKET, ver 01-configmap.yaml)
+          # direto do MinIO — sem rewrite, GCE Ingress encaminha o path como
+          # veio, e /media/<key> já é a URL nativa do bucket "media" no MinIO.
+          # Requer o bucket com download anônimo liberado (ver README).
+          - path: /media
+            pathType: Prefix
+            backend:
+              service:
+                name: minio
+                port:
+                  number: 9000
           - path: /
             pathType: Prefix
             backend:

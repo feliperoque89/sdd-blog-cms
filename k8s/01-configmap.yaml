@@ -25,6 +25,17 @@ data:
   # DNS interno do cluster (Service `redis`, ver 04-redis.yaml) — sem
   # autenticação configurada, por isso não é segredo.
   REDIS_URL: "redis://redis:6379/0"
+  # Storage de mídia (SPEC-005, MinIO — ver 05-minio.yaml). Credenciais
+  # (MEDIA_STORAGE_ACCESS_KEY/SECRET_KEY) vêm do Secret minio-secrets via
+  # env direto no Deployment (06-backend.yaml/07-worker.yaml), não daqui.
+  MEDIA_STORAGE_ENDPOINT_URL: "http://minio:9000"
+  MEDIA_STORAGE_BUCKET: "media"
+  # URL pública usada para montar o link da imagem devolvido ao cliente —
+  # precisa ser alcançável pelo navegador, por isso é o IP do Load Balancer
+  # (09-ingress.yaml) + o path /media roteado pro Service do MinIO, não o
+  # DNS interno do cluster. Ajuste se o IP estático mudar
+  # (`gcloud compute addresses describe sdd-blog-cms-ip --global`).
+  MEDIA_STORAGE_PUBLIC_BASE_URL: "http://34.8.58.240/media"
   LLM_MODEL: "claude-sonnet-4-6"
   LLM_API_BASE_URL: "https://api.anthropic.com/v1/messages"
   LLM_TIMEOUT_SECONDS: "30"

@@ -29,6 +29,20 @@ spec:
                 name: backend-config
             - secretRef:
                 name: backend-secrets
+          env:
+            # Reaproveita as credenciais do MinIO (minio-secrets, ver
+            # 05-minio.yaml) em vez de duplicá-las em backend-secrets —
+            # Settings exige MEDIA_STORAGE_ACCESS_KEY/SECRET_KEY (SPEC-005).
+            - name: MEDIA_STORAGE_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-secrets
+                  key: MINIO_ROOT_USER
+            - name: MEDIA_STORAGE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-secrets
+                  key: MINIO_ROOT_PASSWORD
           readinessProbe:
             httpGet:
               path: /health
