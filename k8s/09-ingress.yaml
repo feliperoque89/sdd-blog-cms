@@ -7,6 +7,23 @@
 # Pré-requisito (uma vez só): reservar um IP externo estático global e
 # referenciar o nome dele abaixo, senão o LB sobe com IP efêmero:
 #   gcloud compute addresses create sdd-blog-cms-ip --global
+#
+# O addon HttpLoadBalancing normalmente já registra a IngressClass `gce`
+# sozinho — mas em alguns clusters ela não aparece (`kubectl get
+# ingressclass` vazio), e nesse caso o Ingress abaixo fica com
+# `ingressClassName` apontando pra uma classe inexistente: o controller
+# nem tenta reconciliar (sem eventos, sem NEGs, sem erro claro — só
+# "Missing one or more resources" no Console). Garantimos a classe aqui
+# pra não depender desse comportamento implícito.
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: gce
+  annotations:
+    ingressclass.kubernetes.io/is-default-class: "false"
+spec:
+  controller: k8s.io/ingress-gce
+---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
