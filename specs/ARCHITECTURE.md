@@ -88,8 +88,16 @@ DATABASE_URL=mysql+asyncmy://blog:<senha>@mysql:3306/blog
 JWT_SECRET=<gerado com openssl rand -hex 32>
 LLM_API_KEY=<chave da API da LLM>
 
-# frontend (build-time — embutido no bundle cliente, ver docker/frontend.Dockerfile)
-NEXT_PUBLIC_API_URL=http://backend:8000
+# frontend — dois consumidores diferentes, ver docker/frontend.Dockerfile:
+# - navegador (build-time, embutido no bundle cliente): vazio = fetch
+#   relativo (/api/...), já que o Ingress serve frontend e backend na
+#   mesma origem (ver "Rede" abaixo).
+NEXT_PUBLIC_API_URL=
+# - SSR/Server Components (runtime, lida no pod, nunca embutida no bundle):
+#   DNS interno do cluster. Nunca o IP externo do Ingress aqui — o pod
+#   chamando o próprio IP público do Load Balancer é hairpin NAT, que o
+#   GKE não garante.
+API_URL=http://backend:8000
 ```
 
 ## Rede

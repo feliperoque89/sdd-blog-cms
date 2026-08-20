@@ -28,8 +28,14 @@ spec:
           ports:
             - containerPort: 3000
           env:
-            # DNS interno do cluster (Service `backend`, ver 06-backend.yaml).
-            - name: NEXT_PUBLIC_API_URL
+            # Só o SSR (Server Components) lê isso, em runtime — DNS interno
+            # do cluster (Service `backend`, ver 06-backend.yaml). Nunca usar
+            # o IP externo do Ingress aqui: o pod voltando pro próprio IP
+            # público do Load Balancer é hairpin NAT, que o GKE não garante.
+            # O navegador usa NEXT_PUBLIC_API_URL, embutida no build da imagem
+            # (docker/frontend.Dockerfile) como "" — fetch relativo (/api/...),
+            # já que o Ingress serve frontend e backend na mesma origem.
+            - name: API_URL
               value: "http://backend:8000"
           readinessProbe:
             httpGet:

@@ -3,6 +3,8 @@
  * Mesmo espírito de `api-client.ts`/`posts-client.ts`.
  */
 
+import { getApiBaseUrl } from "./api-base-url";
+
 /** Provedores de LLM suportados (SPEC-004 / RF06). */
 export type LlmProvider = "anthropic" | "gemini";
 
@@ -37,7 +39,7 @@ export interface AiSettingsInput {
   timeout_seconds?: number | null;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API_URL = getApiBaseUrl();
 
 interface ErrorBody {
   detail?: string;

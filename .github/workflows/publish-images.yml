@@ -40,11 +40,10 @@ jobs:
       - name: Build args específicos por imagem
         id: args
         run: |
-          if [ "${{ matrix.name }}" = "frontend" ]; then
-            echo "build_args=NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "build_args=" >> "$GITHUB_OUTPUT"
-          fi
+          # frontend: NEXT_PUBLIC_API_URL fica vazio de propósito — o Ingress
+          # serve frontend e backend na mesma origem, então o bundle do
+          # navegador usa fetch relativo (/api/...). Ver docker/frontend.Dockerfile.
+          echo "build_args=" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

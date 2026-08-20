@@ -4,6 +4,8 @@
  * chamadas HTTP e parsing/erro de resposta.
  */
 
+import { getApiBaseUrl } from "./api-base-url";
+
 export type PostStatus = "draft" | "published";
 
 export interface AdminPost {
@@ -56,7 +58,7 @@ export interface AdminPostsQuery {
   include_deleted?: boolean;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API_URL = getApiBaseUrl();
 
 interface ErrorBody {
   detail?: string;

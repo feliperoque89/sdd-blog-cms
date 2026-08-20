@@ -5,12 +5,14 @@
  * falhava com violação de chave estrangeira.
  */
 
+import { getApiBaseUrl } from "./api-base-url";
+
 export interface Category {
   id: string;
   name: string;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API_URL = getApiBaseUrl();
 
 interface ErrorBody {
   detail?: string;

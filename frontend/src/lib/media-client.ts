@@ -5,11 +5,13 @@
  * responsabilidade do backend — este client só encaminha o arquivo.
  */
 
+import { getApiBaseUrl } from "./api-base-url";
+
 export interface CoverImageUploadResult {
   url: string;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API_URL = getApiBaseUrl();
 
 interface ErrorBody {
   detail?: string;

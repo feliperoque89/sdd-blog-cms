@@ -6,6 +6,8 @@
  * enfileira o job e consulta seu status.
  */
 
+import { getApiBaseUrl } from "./api-base-url";
+
 export type DraftTone = "formal" | "casual" | "tecnico";
 export type DraftLength = "short" | "medium" | "long";
 
@@ -43,7 +45,7 @@ export interface GenerateDraftResponse {
   status: string;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API_URL = getApiBaseUrl();
 
 const RATE_LIMIT_MESSAGE = "Limite de gerações excedido, tente novamente mais tarde.";
 const GENERIC_GENERATE_ERROR_MESSAGE = "Não foi possível gerar o rascunho. Tente novamente mais tarde.";

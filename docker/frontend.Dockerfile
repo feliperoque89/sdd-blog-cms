@@ -22,9 +22,14 @@ FROM node:20-alpine AS builder
 WORKDIR /build
 COPY --from=deps /build/node_modules ./node_modules
 COPY . .
-# NEXT_PUBLIC_* precisa existir em build-time (fica embutido no bundle
-# cliente) — em produção real, injete via --build-arg no passo de CI/CD.
-ARG NEXT_PUBLIC_API_URL=http://backend:8000
+# NEXT_PUBLIC_* precisa existir em build-time (fica embutido no bundle do
+# NAVEGADOR) — em produção, deixe vazio: o Ingress (k8s/09-ingress.yaml)
+# serve frontend e backend na mesma origem, então "" resolve pra fetch
+# relativo (/api/...). Só passe um valor absoluto via --build-arg pra dev
+# local ou se frontend/backend ficarem em hosts diferentes. O SSR (Server
+# Components) usa uma env separada, não-NEXT_PUBLIC (`API_URL`, ver
+# k8s/08-frontend.yaml), lida em runtime — nunca embutida no bundle.
+ARG NEXT_PUBLIC_API_URL=""
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 RUN npm run build
 

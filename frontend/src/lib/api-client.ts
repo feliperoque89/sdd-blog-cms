@@ -4,13 +4,15 @@
  * duplicar URLs e parsing de resposta entre client e server components.
  */
 
+import { getApiBaseUrl } from "./api-base-url";
+
 export interface AuthenticatedUser {
   id: string;
   name: string;
   role: "admin" | "editor";
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API_URL = getApiBaseUrl();
 
 export type LoginResult =
   | { ok: true; user: AuthenticatedUser }
