@@ -8,7 +8,11 @@ metadata:
   name: frontend
   namespace: sdd-blog-cms
 spec:
-  replicas: 6
+  # 6 réplicas era demais pro cluster de 3x e2-medium (~940m CPU alocável
+  # por nó): estava deixando o cluster em 90-96% de CPU requisitada e
+  # impedindo o mysql-0 (250m) de ser agendado. 2 réplicas sobra CPU de
+  # sobra pra rollouts (surge) e ainda dá HA básica.
+  replicas: 2
   selector:
     matchLabels:
       app: frontend
