@@ -41,7 +41,12 @@ spec:
             periodSeconds: 20
           resources:
             requests:
-              cpu: 250m
+              # 250m não cabia em nenhum nó individual do cluster de 3x
+              # e2-medium (~940m alocável/nó, já dividido entre os outros
+              # componentes) — mysql-0 ficava Pending pra sempre mesmo com
+              # CPU livre agregada no cluster. limits continua em 1 vCPU
+              # pra picos de query, só a requisição de agendamento caiu.
+              cpu: 150m
               memory: 512Mi
             limits:
               cpu: "1"
