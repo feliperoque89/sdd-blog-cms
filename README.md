@@ -46,6 +46,12 @@ processo desde o início?", não para virar um CMS de verdade.
   Deployments para backend/worker/frontend, Service e Ingress — ver
   [`k8s/`](k8s/)).
 - **Qualidade e CI** — testes unitários e de integração (pytest/testcontainers no backend, Vitest/RTL/MSW no frontend), cobertura mínima e pipeline no GitHub Actions.
+- **Publicação de imagens e deploy em nuvem** — workflow do GitHub Actions
+  (`.github/workflows/publish-images.yml`) faz build das imagens e publica
+  tanto no Docker Hub quanto no Google Artifact Registry, autenticando no
+  GCP via Workload Identity Federation (sem chave de service account). No
+  GKE, a aplicação fica exposta por um Load Balancer nativo do Google Cloud
+  (Ingress classe `gce`, ver [`k8s/09-ingress.yaml`](k8s/09-ingress.yaml)).
 
 ## Stack
 
@@ -60,7 +66,7 @@ processo desde o início?", não para virar um CMS de verdade.
 | Testes backend  | pytest · pytest-asyncio · httpx · pytest-cov · testcontainers       |
 | Testes frontend | Vitest · React Testing Library · MSW                                |
 | Containers      | Docker + Kubernetes (um Deployment/StatefulSet por componente)      |
-| CI/CD           | GitHub Actions                                                       |
+| CI/CD           | GitHub Actions (build + push para Docker Hub e Google Artifact Registry) |
 | Dev assistido   | Claude Code (subagentes, slash commands, SDD)                       |
 
 ## Estrutura
@@ -107,6 +113,15 @@ cd frontend && npm run test
 ```
 
 Mais comandos (migrations, etc.) em `CLAUDE.md`.
+
+## Publicando imagens (Docker Hub + Google Cloud)
+
+O workflow [`publish-images.yml`](.github/workflows/publish-images.yml) builda
+backend e frontend e publica as imagens tanto no Docker Hub quanto no Google
+Artifact Registry (autenticação no GCP via Workload Identity Federation,
+sem chave de service account armazenada no repo). Dispara automaticamente ao
+dar push numa tag `vX.Y.Z`, ou manualmente pela aba **Actions → Publish
+images → Run workflow**.
 
 ## Fluxo SDD deste repositório
 

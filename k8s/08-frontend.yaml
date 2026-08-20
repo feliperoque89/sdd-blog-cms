@@ -19,8 +19,8 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: sdd-blog-cms-frontend:local
-          imagePullPolicy: IfNotPresent
+          image: us-central1-docker.pkg.dev/ssd-blog-cms/sdd-blog-cms/frontend:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 3000
           env:

@@ -15,9 +15,12 @@ metadata:
     kubernetes.io/ingress.global-static-ip-name: sdd-blog-cms-ip
 spec:
   ingressClassName: gce
+  # Sem `host:` de propósito — sem domínio real (conta de teste), serve
+  # direto pelo IP externo do Load Balancer. Se um domínio real for
+  # apontado pra esse IP no futuro, reintroduza `host: seu-dominio.com`
+  # em cada regra abaixo.
   rules:
-    - host: blog.local # ajuste para o domínio real em produção
-      http:
+    - http:
         paths:
           - path: /api
             pathType: Prefix

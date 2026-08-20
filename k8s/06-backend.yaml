@@ -16,10 +16,12 @@ spec:
       containers:
         - name: backend
           # Build local (kind/minikube): docker/backend.Dockerfile. Em
-          # produção, substitua pela imagem publicada num registry (ex.:
-          # ghcr.io/<org>/sdd-blog-cms-backend:<tag>), nunca `:local`.
-          image: sdd-blog-cms-backend:local
-          imagePullPolicy: IfNotPresent
+          # produção (GKE), aponta pro Artifact Registry — tag `latest` fixa
+          # + `imagePullPolicy: Always` pra não precisar editar o manifest a
+          # cada rebuild, só `docker push ...:latest` e
+          # `kubectl rollout restart deploy/backend deploy/worker -n sdd-blog-cms`.
+          image: us-central1-docker.pkg.dev/ssd-blog-cms/sdd-blog-cms/backend:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8000
           envFrom:

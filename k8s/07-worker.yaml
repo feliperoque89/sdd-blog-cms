@@ -18,8 +18,8 @@ spec:
     spec:
       containers:
         - name: worker
-          image: sdd-blog-cms-backend:local
-          imagePullPolicy: IfNotPresent
+          image: us-central1-docker.pkg.dev/ssd-blog-cms/sdd-blog-cms/backend:latest
+          imagePullPolicy: Always
           command: ["python", "-m", "app.workers.ai_worker"]
           envFrom:
             - configMapRef:
